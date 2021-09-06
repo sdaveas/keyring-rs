@@ -1,5 +1,5 @@
 #[cfg(target_os = "linux")]
-use secret_service::SsError;
+use secret_service::Error;
 #[cfg(target_os = "macos")]
 use security_framework::base::Error as SfError;
 use std::error;
@@ -13,7 +13,7 @@ pub enum KeyringError {
     #[cfg(target_os = "macos")]
     MacOsKeychainError(SfError),
     #[cfg(target_os = "linux")]
-    SecretServiceError(SsError),
+    SecretServiceError(Error),
     #[cfg(target_os = "windows")]
     WindowsVaultError,
     NoBackendFound,
@@ -66,8 +66,8 @@ impl error::Error for KeyringError {
 }
 
 #[cfg(target_os = "linux")]
-impl From<SsError> for KeyringError {
-    fn from(err: SsError) -> KeyringError {
+impl From<Error> for KeyringError {
+    fn from(err: Error) -> KeyringError {
         KeyringError::SecretServiceError(err)
     }
 }

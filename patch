@@ -1,0 +1,72 @@
+diff --git a/src/error.rs b/src/error.rs
+index c041eaf..d160933 100644
+--- a/src/error.rs
++++ b/src/error.rs
+@@ -1,5 +1,5 @@
+ #[cfg(target_os = "linux")]
+-use secret_service::SsError;
++use secret_service::Error;
+ #[cfg(target_os = "macos")]
+ use security_framework::base::Error as SfError;
+ use std::error;
+@@ -13,7 +13,7 @@ pub enum KeyringError {
+     #[cfg(target_os = "macos")]
+     MacOsKeychainError(SfError),
+     #[cfg(target_os = "linux")]
+-    SecretServiceError(SsError),
++    SecretServiceError(Error),
+     #[cfg(target_os = "windows")]
+     WindowsVaultError,
+     NoBackendFound,
+@@ -66,8 +66,8 @@ impl error::Error for KeyringError {
+ }
+
+ #[cfg(target_os = "linux")]
+-impl From<SsError> for KeyringError {
+-    fn from(err: SsError) -> KeyringError {
++impl From<Error> for KeyringError {
++    fn from(err: Error) -> KeyringError {
+         KeyringError::SecretServiceError(err)
+     }
+ }
+diff --git a/src/linux.rs b/src/linux.rs
+index 9e6b31c..2d1edd4 100644
+--- a/src/linux.rs
++++ b/src/linux.rs
+@@ -29,7 +29,7 @@ impl<'a> Keyring<'a> {
+         let label = &format!("Password for {} on {}", self.username, self.service)[..];
+         collection.create_item(
+             label,
+-            attrs,
++            to_map(attrs),
+             password.as_bytes(),
+             true, // replace
+             "text/plain",
+@@ -43,7 +43,7 @@ impl<'a> Keyring<'a> {
+         if collection.is_locked()? {
+             collection.unlock()?;
+         }
+-        let search = collection.search_items(self.attributes.clone())?;
++        let search = collection.search_items(to_map(self.attributes.clone()))?;
+         let item = search.get(0).ok_or(KeyringError::NoPasswordFound)?;
+         let secret_bytes = item.get_secret()?;
+         let secret = String::from_utf8(secret_bytes)?;
+@@ -56,8 +56,17 @@ impl<'a> Keyring<'a> {
+         if collection.is_locked()? {
+             collection.unlock()?;
+         }
+-        let search = collection.search_items(self.attributes.clone())?;
++        let search = collection.search_items(to_map(self.attributes.clone()))?;
+         let item = search.get(0).ok_or(KeyringError::NoPasswordFound)?;
+         Ok(item.delete()?)
+     }
+ }
++
++use std::collections::HashMap;
++fn to_map<K:std::hash::Hash + std::cmp::Eq, V>(vec: Vec<(K, V)>)  -> HashMap<K, V> {
++    let mut map = HashMap::new();
++    for (k, v) in vec {
++        map.insert(k, v);
++    }
++    map
++}
